@@ -151,18 +151,29 @@ public class ChessGameFrame extends JFrame {
                 str[i]=lines.get(i).split(",");
             }
             if (checkRight(path,str,lines)){
-                List<Action>actions=new ArrayList<>();
+                List<Action>actions;
                 actions=convertToAction(lines);
             ChessGameFrame mainFrame = new ChessGameFrame(1100, 810,1,PlayerColor.BLUE);
             GameController gameController = new GameController(mainFrame.getChessboardComponent(), new Chessboard(),1,PlayerColor.BLUE);
             mainFrame.setVisible(true);
             System.out.println(actions.size());
-                for (int i = 0; i <actions.size() ; i++) {
-                    gameController.doAction(actions.get(i));
+                for (int i = 0; i < actions.size(); i++) {
+                    int finalI=i;
+                    Thread aThread =new Thread(()->{
+                            gameController.doAction(actions.get(finalI));
+                            try {
+                                Thread.sleep(500);
+                            } catch (InterruptedException ex) {
+                                ex.printStackTrace();
+                            }
+                    });
+                    aThread.run();
                 }
-            }}});
-
-    }
+//                for (int i = 0; i <actions.size() ; i++) {
+//                    gameController.doAction(actions.get(i));
+//                }
+            }
+    }});}
     protected void addBackground(int turn,PlayerColor color){
         Image img = new ImageIcon("resource/gameBg2.png").getImage();
         img=img.getScaledInstance(WIDTH,HEIGTH,Image.SCALE_DEFAULT);
@@ -235,7 +246,7 @@ public class ChessGameFrame extends JFrame {
         strings[9]=frame.getLabel1().getText();
         strings[10]=frame.getLabel2().getText();
         for (int i = 0; i < chessboardComponent.getGameController().getActions().size(); i++) {
-            strings[11+i]=actions.get(i).toString();
+            strings[11+i]=chessboardComponent.getGameController().getActions().get(i).toString();
         }
         File file=new File(path);
 //        if (file.exists()){
@@ -260,18 +271,17 @@ public class ChessGameFrame extends JFrame {
         else if (lines.size()==11) {
             JOptionPane.showMessageDialog(null,"错误","缺少行棋步骤",JOptionPane.ERROR_MESSAGE);
             return false;
-        } else if (strings.length!=9&&strings[0].length!=7){
+        } else if (!boardRight(strings)){
             JOptionPane.showMessageDialog(null,"错误","棋盘的大小应该是7*9",JOptionPane.ERROR_MESSAGE);
             return false;
         } else if (lines.size()<10) {
             JOptionPane.showMessageDialog(null,"错误","信息缺失",JOptionPane.ERROR_MESSAGE);
             return false;
-        } else if (Integer.parseInt(lines.get(9))<=0) {
-            JOptionPane.showMessageDialog(null,"错误","轮数不可能小于0",JOptionPane.ERROR_MESSAGE);
+        } else if (!lines.get(10).equals("BLUE")&&!lines.get(10).equals("RED")) {
+            JOptionPane.showMessageDialog(null,"错误","玩家仅为红与蓝/缺少行棋方",JOptionPane.ERROR_MESSAGE);
             return false;
-        }
-        else if (!lines.get(10).equals("BLUE")&&!lines.get(10).equals("RED")) {
-            JOptionPane.showMessageDialog(null,"错误","玩家仅为红与蓝",JOptionPane.ERROR_MESSAGE);
+        } else if (!chessRight(strings)) {
+            JOptionPane.showMessageDialog(null,"错误","棋子错误",JOptionPane.ERROR_MESSAGE);
             return false;
         }
         return true;
@@ -299,7 +309,7 @@ public class ChessGameFrame extends JFrame {
             }
         return actions;}else return null;
     }
-    public ChessPiece produceChess(String str,String str2){
+    private ChessPiece produceChess(String str,String str2){
         if (str.equals("BLUE")){
             ChessPiece chessPiece=new ChessPiece(PlayerColor.BLUE,str2);
             return chessPiece;
@@ -307,5 +317,28 @@ public class ChessGameFrame extends JFrame {
             ChessPiece chessPiece=new ChessPiece(PlayerColor.RED,str2);
             return chessPiece;
         }
+    }
+    private Boolean chessRight(String[][]strings){
+        List<Integer>integerList=new ArrayList<>();
+        for (int i = 0; i < 9; i++) {
+            for (int j = 0; j < 7; j++) {
+                if (Integer.parseInt(strings[i][j])!=0){
+                    if (Integer.parseInt(strings[i][j])>8||Integer.parseInt(strings[i][j])<-8){
+                        return false;
+                    }else if (!integerList.contains(Integer.parseInt(strings[i][j]))){
+                        integerList.add(Integer.parseInt(strings[i][j]));
+                    }else return false;
+                }
+            }
+        }
+        return true;
+    }
+    private Boolean boardRight(String[][]strings){
+        for (int i = 0; i < 9; i++) {
+            if (strings[i].length!=7){
+                return false;
+            }
+        }
+        return true;
     }
 }

@@ -3,6 +3,7 @@ package model;
 import controller.GameController;
 
 import javax.management.StringValueExp;
+import javax.swing.*;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -126,8 +127,11 @@ public class Chessboard {
                     case 1:
                         grid[i][j].setPiece(new ChessPiece(PlayerColor.BLUE, "鼠"));
                         break;
-
                 }
+                if (pathInt[i][j]!=0&&getChessPieceAt(i,j)==null){
+                    JOptionPane.showMessageDialog(null,"错误","缺少行棋步骤",JOptionPane.ERROR_MESSAGE);
+                }
+
             }
         }
         for (int i = 0; i < cells.length; i++) {

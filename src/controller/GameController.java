@@ -204,6 +204,9 @@ public class GameController implements GameListener {
 //        }
 //        System.out.println(action.getValue());
 //        System.out.println(action);
+        if (model.getChessPieceAt(action.getFrom())==null){
+            JOptionPane.showMessageDialog(null,"错误","行棋步骤",JOptionPane.ERROR_MESSAGE);
+        }
         ChessComponent component1=(ChessComponent) view.getCellComponentAt(action.getFrom()).getComponents()[0];
         if (model.getChessPieceAt(action.getDest())==null){
             if (!getModel().isValidMove(action.getFrom(),action.getDest())||!model.getChessPieceAt(action.getFrom()).equals(action.getPieceFirst())){
@@ -226,6 +229,7 @@ public class GameController implements GameListener {
             onPlayerClickChessPiece(action.getFrom(),component1);
             onPlayerClickChessPiece(action.getDest(),component2);
         }
+        view.paintImmediately(-view.getGameFrame().getHeight()/5,-view.getGameFrame().getHeight()/10,view.getGameFrame().getWidth(),view.getGameFrame().getHeight());
     }
     public void regretAction(Action action){
         System.out.println(model.getChessPieceAt(action.getDest()));
@@ -278,8 +282,16 @@ public class GameController implements GameListener {
             if (model.getChessPieceAt(validActions.get(i).getDest())!=null){
                 validActions.get(i).setValue(20*model.getChessPieceAt(validActions.get(i).getDest()).getFinalRank());
             }
-            if (dest2.contains(validActions.get(i).getDest())){
-                validActions.get(i).setValue(-10*model.getChessPieceAt(validActions.get(i).getFrom()).getFinalRank());
+            for (int j = 0; j < dest2.size(); j++) {
+                if (dest2.get(j).equals(validActions.get(i).getDest())){
+                    if (rank2.get(j)>=validActions.get(i).getPieceFirst().getRank()){
+                        validActions.get(i).setValue(-10*model.getChessPieceAt(validActions.get(i).getFrom()).getFinalRank());
+                    }
+                    if (rank2.get(j)==1&&validActions.get(i).getPieceFirst().getRank()==8){
+                        validActions.get(i).setValue(-10*model.getChessPieceAt(validActions.get(i).getFrom()).getFinalRank());
+                    }
+                    break;
+                }
             }
             if (dest2.contains(validActions.get(i).getFrom())){
                 validActions.get(i).setValue(20*model.getChessPieceAt(validActions.get(i).getFrom()).getFinalRank());
@@ -311,13 +323,9 @@ public class GameController implements GameListener {
     public Action playerAI(){
         List<Action>actions=getActionWithValue(PlayerColor.RED);
         Collections.sort(actions);
-        for (int i = 0; i < actions.size(); i++) {
-            System.out.println(actions.get(i));
-            System.out.println(actions.get(i).getValue());
-        }
         if (turn<=6){
         return actions.get(0);}
-        else if (actions.get(0).getValue()<20&&actions.size()>=9){
+        else if (actions.get(0).getValue()<20&&actions.size()>10){
             int random=(int) Math.random()*10;
             return actions.get(random);
         }
