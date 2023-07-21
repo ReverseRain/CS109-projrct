@@ -7,6 +7,11 @@ import model.*;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseEvent;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.*;
 import java.util.List;
 
@@ -67,8 +72,8 @@ public class ChessboardComponent extends JComponent {
                     ChessPiece chessPiece = grid[i][j].getPiece();
                     System.out.println(chessPiece.getOwner());
                     gridComponents[i][j].add(
-                                    new ChessComponent(
-                                            CHESS_SIZE,chessPiece));
+                            new ChessComponent(
+                                    CHESS_SIZE,chessPiece));
                 }
             }
         }
@@ -182,8 +187,76 @@ public class ChessboardComponent extends JComponent {
                 gameController.onPlayerClickChessPiece(getChessboardPoint(e.getPoint()), (ChessComponent) clickedComponent.getComponents()[0]);
             }
             System.out.println(gameController.isMove());
-            if (gameController.isMove()&& gameController.isAI()&&!gameController.win()){
-                gameController.doAction(gameController.playerAI());
+            if (gameController.isMove()){
+                if (gameController.isAI()&&!gameController.win()){
+                    gameController.doAction(gameController.playerAI());
+                    gameController.setMove(false);}
+                if (gameController.isEasyAI()&&!gameController.win()){
+                    gameController.doAction(gameController.playerEasyAI());
+                    gameController.setMove(false);
+                }
+                if (gameController.getServer()!=null){
+                    try {
+                        System.out.println("hh");
+                        Socket socket=gameController.getServer().accept();
+                        System.out.println(socket);
+                        OutputStream outputStream = socket.getOutputStream();
+                        String message=gameController.getActions().get(gameController.getActions().size()-1).toString();
+                        for (int i = 0; i < gameController.getActions().size(); i++) {
+                            System.out.println(gameController.getActions().get(i).toString());
+                        }
+                        System.out.println(message);
+                        outputStream.write(message.getBytes("UTF-8"));
+                        System.out.println(outputStream);
+                        socket.shutdownOutput();
+                    } catch (IOException ex) {
+                        throw new RuntimeException(ex);
+                    }
+                    try {
+                        Socket socket = gameController.getServer().accept();
+                        InputStream inputStream=socket.getInputStream();
+                        byte[] bytes = new byte[1024];
+                        int len;
+                        StringBuilder sb = new StringBuilder();
+                        while ((len = inputStream.read(bytes)) != -1) {
+                            sb.append(new String(bytes, 0, len, "UTF-8"));
+                        }
+                        System.out.println(sb);
+                        gameController.doAction(gameController.translateAction(sb));
+                        inputStream.close();
+                    } catch (IOException ex) {
+                        throw new RuntimeException(ex);
+                    }
+
+                }
+                if (gameController.getYourSocket()!=null){
+                    try {
+                        OutputStream outputStream = gameController.getYourSocket().getOutputStream();
+                        String message=gameController.getActions().get(gameController.getActions().size()-1).toString();
+                        gameController.getYourSocket().getOutputStream().write(message.getBytes("UTF-8"));
+                        System.out.println(outputStream);
+                        gameController.getYourSocket().shutdownOutput();
+                    } catch (IOException ex) {
+                        throw new RuntimeException(ex);
+                    }
+                    try {
+                        gameController.setYourSocket(new Socket(gameController.getIP(),gameController.getPort()));
+                        InputStream inputStream = gameController.getYourSocket().getInputStream();
+                        byte[] bytes = new byte[1024];
+                        int len;
+                        StringBuilder sb = new StringBuilder();
+                        while ((len = inputStream.read(bytes)) != -1) {
+                            sb.append(new String(bytes, 0, len,"UTF-8"));
+                        }
+                        System.out.println(sb);
+                        gameController.doAction(gameController.translateAction(sb));
+                        inputStream.close();
+                        gameController.setYourSocket(new Socket(gameController.getIP(),gameController.getPort()));
+                    } catch (IOException ex) {
+                        throw new RuntimeException(ex);
+                    }
+
+                }
                 gameController.setMove(false);
             }
         }
@@ -223,8 +296,8 @@ public class ChessboardComponent extends JComponent {
             }
             else {
                 if (model.isValidMove(point,pointList.get(i))){
-                        getCellComponentAt(pointList.get(i)).setBackground(Color.PINK);
-                        getCellComponentAt(pointList.get(i)).repaint();
+                    getCellComponentAt(pointList.get(i)).setBackground(Color.PINK);
+                    getCellComponentAt(pointList.get(i)).repaint();
                 }
             }
         }

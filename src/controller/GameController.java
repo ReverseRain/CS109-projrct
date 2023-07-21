@@ -9,6 +9,8 @@ import view.*;
 import javax.swing.*;
 import java.awt.*;
 import java.io.*;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.*;
 import java.util.List;
 
@@ -19,17 +21,45 @@ import java.util.List;
  * analyzes and then hands over to the model for processing
  * [in this demo the request methods are onPlayerClickCell() and onPlayerClickChessPiece()]
  *
-*/
+ */
 public class GameController implements GameListener {
 
 
     private Chessboard model;
     private ChessboardComponent view;
-    private PlayerColor currentPlayer;
+    private PlayerColor currentPlayer;private ServerSocket server;
+    private Socket yourSocket;
+
+    public ServerSocket getServer() {
+        return server;
+    }
+
+    public void setServer(ServerSocket server) {
+        this.server = server;
+    }
+
+    public Socket getYourSocket() {
+        return yourSocket;
+    }
+
+    public boolean isEasyAI() {
+        return easyAI;
+    }
+
+    public void setEasyAI(boolean easyAI) {
+        this.easyAI = easyAI;
+    }
+
+    private boolean easyAI=false;
+
+    public void setYourSocket(Socket yourSocket) {
+        this.yourSocket = yourSocket;
+    }
 
     private ChessboardPoint selectedPoint;
     private boolean isAI=false;
     private boolean isMove=false;
+    private boolean isNet=false;
 
     public boolean isAI() {
         return isAI;
@@ -44,8 +74,43 @@ public class GameController implements GameListener {
     }
 
     private int turn;
-    private ChessGameFrame gameframe;
     private List<Action> actions=new ArrayList<>();
+    private int yourPort;
+    private String yourIP;
+    private int Port;
+    private String IP;
+
+    public String getIP() {
+        return IP;
+    }
+
+    public void setIP(String IP) {
+        this.IP = IP;
+    }
+
+    public int getPort() {
+        return Port;
+    }
+
+    public void setPort(int port) {
+        Port = port;
+    }
+
+    public String getYourIP() {
+        return yourIP;
+    }
+
+    public void setYourIP(String yourIP) {
+        this.yourIP = yourIP;
+    }
+
+    public int getYourPort() {
+        return yourPort;
+    }
+
+    public void setYourPort(int yourPort) {
+        this.yourPort = yourPort;
+    }
 
     public Chessboard getModel() {
         return model;
@@ -53,6 +118,10 @@ public class GameController implements GameListener {
 
     public List<Action> getActions() {
         return actions;
+    }
+
+    public void setActions(List<Action> actions) {
+        this.actions = actions;
     }
 
     public GameController(ChessboardComponent view, Chessboard model, int turn, PlayerColor color) {
@@ -84,9 +153,8 @@ public class GameController implements GameListener {
         }
         currentPlayer = currentPlayer == PlayerColor.BLUE ? PlayerColor.RED : PlayerColor.BLUE;
         if (currentPlayer==PlayerColor.BLUE){turn++;
-        view.getGameFrame().getLabel1().setText(String.valueOf(turn));
-        setMove(false);
-        view.getGameFrame().getLabel1().repaint();}else setMove(true);   //添加标签的步骤与所需要的组件！！
+            view.getGameFrame().getLabel1().setText(String.valueOf(turn));
+            view.getGameFrame().getLabel1().repaint();}   //添加标签的步骤与所需要的组件！！
         view.getGameFrame().getLabel2().setText(String.valueOf(currentPlayer));
         view.getGameFrame().getLabel2().repaint();
     }
@@ -94,8 +162,7 @@ public class GameController implements GameListener {
         currentPlayer = currentPlayer == PlayerColor.BLUE ? PlayerColor.RED : PlayerColor.BLUE;
         if (currentPlayer==PlayerColor.RED){turn--;
             view.getGameFrame().getLabel1().setText(String.valueOf(turn));
-            setMove(true);
-            view.getGameFrame().getLabel1().repaint();} setMove(false);   //添加标签的步骤与所需要的组件！！
+            view.getGameFrame().getLabel1().repaint();}   //添加标签的步骤与所需要的组件！！
         view.getGameFrame().getLabel2().setText(String.valueOf(currentPlayer));
         view.getGameFrame().getLabel2().repaint();
     }
@@ -119,11 +186,21 @@ public class GameController implements GameListener {
     }
 
 
+    public boolean isNet() {
+        return isNet;
+    }
+
+    public void setNet(boolean net) {
+        isNet = net;
+    }
+
     // click an empty cell
     @Override
     public void onPlayerClickCell(ChessboardPoint point, CellComponent component) {
         if (selectedPoint != null && model.isValidMove(selectedPoint, point)) {
             actions.add(new Action(selectedPoint,point,model.getChessPieceAt(selectedPoint),null));
+            setMove(true);
+//            sentClient(actions.get(actions.size()-1).toString());
             model.moveChessPiece(selectedPoint, point);
             view.setChessComponentAtGrid(point, view.removeChessComponentAtGrid(selectedPoint));
             if (view.getCellComponentAt(selectedPoint).getName()!=null){
@@ -137,12 +214,14 @@ public class GameController implements GameListener {
                 }
                 model.getChessPieceAt(point).setRank(0);
             }
-
             selectedPoint = null;
             swapColor();
             view.clean();
-            view.repaint();
+            view.paintImmediately(-view.getGameFrame().getHeight()/5,-view.getGameFrame().getHeight()/10,view.getGameFrame().getWidth(),view.getGameFrame().getHeight());
             // TODO: if the chess enter Dens or Traps and so on
+        } else if (selectedPoint!=null&&!model.isValidMove(selectedPoint, point)) {
+            JOptionPane.showMessageDialog(null,"行棋错误","错误",JOptionPane.ERROR_MESSAGE);
+            System.out.println("lolo");
         }
     }
 
@@ -165,6 +244,7 @@ public class GameController implements GameListener {
         }
         else if (model.getChessPieceAt(selectedPoint).canCapture(component.getChessPiece())&& model.isValidCapture(selectedPoint,point)){
             actions.add(new Action(selectedPoint,point,model.getChessPieceAt(selectedPoint),model.getChessPieceAt(point)));
+            setMove(true);
             model.captureChessPiece(selectedPoint, point);
             view.removeChessComponentAtGrid(point);
             view.setChessComponentAtGrid(point, view.removeChessComponentAtGrid(selectedPoint));
@@ -173,7 +253,9 @@ public class GameController implements GameListener {
             selectedPoint = null;
             swapColor();
             view.clean();
-            view.repaint();
+            view.paintImmediately(-view.getGameFrame().getHeight()/5,-view.getGameFrame().getHeight()/10,view.getGameFrame().getWidth(),view.getGameFrame().getHeight());
+        } else if (!model.isValidCapture(selectedPoint,point)) {
+            JOptionPane.showMessageDialog(null,"行棋错误","错误",JOptionPane.ERROR_MESSAGE);
         }
 
         // TODO: Implement capture function
@@ -196,14 +278,12 @@ public class GameController implements GameListener {
         }
         return null;
     }
+
+    public ChessboardComponent getView() {
+        return view;
+    }
+
     public void doAction(Action action)  {
-//        try {
-//            Thread.sleep(300);
-//        }catch (Exception e){
-//            e.printStackTrace();
-//        }
-//        System.out.println(action.getValue());
-//        System.out.println(action);
         if (model.getChessPieceAt(action.getFrom())==null){
             JOptionPane.showMessageDialog(null,"错误","行棋步骤",JOptionPane.ERROR_MESSAGE);
         }
@@ -215,7 +295,7 @@ public class GameController implements GameListener {
             if (!model.isValidMove(action.getFrom(),action.getDest())) {
                 JOptionPane.showMessageDialog(null, "错误", "行棋步骤", JOptionPane.ERROR_MESSAGE);
             }
-                onPlayerClickChessPiece(action.getFrom(),component1);
+            onPlayerClickChessPiece(action.getFrom(),component1);
             onPlayerClickCell(action.getDest(),view.getCellComponentAt(action.getDest()));
 
         }else {
@@ -247,13 +327,14 @@ public class GameController implements GameListener {
             model.setChessPiece(action.getDest(), action.getPieceSecond());
             view.setChessComponentAtGrid(action.getDest(),new ChessComponent((810*4/5)/9,action.getPieceSecond()));
             if (view.getCellComponentAt(action.getDest()).getName()!=null){
-            view.getCellComponentAt(action.getDest()).setBite(true);
-            model.getChessPieceAt(action.getDest()).setRank(0);}}
+                view.getCellComponentAt(action.getDest()).setBite(true);
+                model.getChessPieceAt(action.getDest()).setRank(0);}}
         if (action.getDest().equals(new ChessboardPoint(0,3))||action.getDest().equals(new ChessboardPoint(8,3))){
             view.getCellComponentAt(action.getDest()).setOccupy(false);
         }
         actions.remove(actions.get(actions.size()-1));
         swapColor2();
+        setMove(false);
         view.repaint();
     }
     public List<Action> getActionWithValue(PlayerColor color){
@@ -267,7 +348,7 @@ public class GameController implements GameListener {
         }
         for (int i = 0; i <validActions.size(); i++) {
             if (model.calculateDistance(validActions.get(i).getDest(),view.getReserveDenCell(color))-model.calculateDistance(validActions.get(i).getFrom(),view.getReserveDenCell(color))<0){
-            validActions.get(i).setValue(20-model.calculateDistance(validActions.get(i).getDest(),view.getReserveDenCell(color)));}
+                validActions.get(i).setValue(20-model.calculateDistance(validActions.get(i).getDest(),view.getReserveDenCell(color)));}
             if ((model.getChessPieceAt(7,0)!=null&&model.getChessPieceAt(7,6)!=null)||turn<=3){
                 if (model.getChessPieceAt(validActions.get(i).getFrom()).getRank()==1||model.getChessPieceAt(validActions.get(i).getFrom()).getRank()==3||model.getChessPieceAt(validActions.get(i).getFrom()).getRank()==2){
                     validActions.get(i).setValue(20);
@@ -307,9 +388,9 @@ public class GameController implements GameListener {
                     List<ChessboardPoint> chessboardPoints=view.getValidDest(new ChessboardPoint(i,j),model);
                     for (int k = 0; k < chessboardPoints.size(); k++) {
                         if (model.getChessPieceAt(chessboardPoints.get(k).getRow(),chessboardPoints.get(k).getCol())!=null){
-                        validActions.add(new Action(new ChessboardPoint(i,j),chessboardPoints.get(k),model.getChessPieceAt(i,j),model.getChessPieceAt(chessboardPoints.get(k))));
-                    }
-                    else validActions.add(new Action(new ChessboardPoint(i,j),chessboardPoints.get(k),model.getChessPieceAt(i,j),model.getChessPieceAt(chessboardPoints.get(k))));
+                            validActions.add(new Action(new ChessboardPoint(i,j),chessboardPoints.get(k),model.getChessPieceAt(i,j),model.getChessPieceAt(chessboardPoints.get(k))));
+                        }
+                        else validActions.add(new Action(new ChessboardPoint(i,j),chessboardPoints.get(k),model.getChessPieceAt(i,j),model.getChessPieceAt(chessboardPoints.get(k))));
                     }
                 }
             }
@@ -324,10 +405,27 @@ public class GameController implements GameListener {
         List<Action>actions=getActionWithValue(PlayerColor.RED);
         Collections.sort(actions);
         if (turn<=6){
-        return actions.get(0);}
+            return actions.get(0);}
         else if (actions.get(0).getValue()<20&&actions.size()>10){
             int random=(int) Math.random()*10;
             return actions.get(random);
         }
         return actions.get(0);}
+    public Action playerEasyAI(){
+        List<Action>actions=getActionWithValue(PlayerColor.RED);
+        int random=(int) Math.random()*actions.size();
+        return actions.get(random);}
+    public Action translateAction(StringBuilder sb){
+        String[]strings=sb.toString().split("--");
+        String[][]str=new String[2][];
+        str[0]=strings[4].split(",");
+        str[1]=strings[5].split(",");
+        ChessboardPoint from=new ChessboardPoint(Integer.parseInt(str[0][0]),Integer.parseInt(str[0][1]));
+        ChessboardPoint dest=new ChessboardPoint(Integer.parseInt(str[1][0]),Integer.parseInt(str[1][1]));
+        ChessPiece piece1=view.getGameFrame().produceChess(strings[1],strings[0]);
+        if (!strings[2].equals("null")){
+            ChessPiece piece2=view.getGameFrame().produceChess(strings[3],strings[2]);
+            return new Action(from,dest,piece1,piece2);
+        }else return new Action(from,dest,piece1,null);
+    }
 }

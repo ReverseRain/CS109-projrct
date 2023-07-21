@@ -46,14 +46,14 @@ public class ChessGameFrame extends JFrame {
         setLayout(null);
 
         addChessboard();
-        addHelloButton();
+        addPlaybackButton();
         addRestartButton();
         addTurnLabel(turn);
         addPlayerLabel(color);
         addLoadButton();
         addSaveButton();
         addRegretButton();
-        addBackground(turn, color);
+        addBackground();
 
 
         chessboardComponent.registerFrame(this);
@@ -122,12 +122,12 @@ public class ChessGameFrame extends JFrame {
 
         button.addActionListener(e -> {
             System.out.println("Click restart");int response=JOptionPane.showConfirmDialog(null,"确定重新开始吗","confirm",JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
-        if (response==JOptionPane.YES_OPTION){
-            SwingUtilities.invokeLater(() -> {
-                BeginFrame beginFrame=new BeginFrame(1100, 810);
-                beginFrame.setVisible(true);
-            });
-        }
+            if (response==JOptionPane.YES_OPTION){
+                SwingUtilities.invokeLater(() -> {
+                    BeginFrame beginFrame=new BeginFrame(1100, 810);
+                    beginFrame.setVisible(true);
+                });
+            }
         });
     }
 
@@ -146,35 +146,35 @@ public class ChessGameFrame extends JFrame {
             List<String> lines =GameController.readFileByFileReader(path);
             System.out.println(lines.size());
             if (lines!=null){
-            String[][]str=new String[9][];
-            for (int i = 0; i < 9; i++) {
-                str[i]=lines.get(i).split(",");
-            }
-            if (checkRight(path,str,lines)){
-                List<Action>actions;
-                actions=convertToAction(lines);
-            ChessGameFrame mainFrame = new ChessGameFrame(1100, 810,1,PlayerColor.BLUE);
-            GameController gameController = new GameController(mainFrame.getChessboardComponent(), new Chessboard(),1,PlayerColor.BLUE);
-            mainFrame.setVisible(true);
-            System.out.println(actions.size());
-                for (int i = 0; i < actions.size(); i++) {
-                    int finalI=i;
-                    Thread aThread =new Thread(()->{
+                String[][]str=new String[9][];
+                for (int i = 0; i < 9; i++) {
+                    str[i]=lines.get(i).split(",");
+                }
+                if (checkRight(path,str,lines)){
+                    List<Action>actions;
+                    actions=convertToAction(lines);
+                    ChessGameFrame mainFrame = new ChessGameFrame(1100, 810,1,PlayerColor.BLUE);
+                    GameController gameController = new GameController(mainFrame.getChessboardComponent(), new Chessboard(),1,PlayerColor.BLUE);
+                    mainFrame.setVisible(true);
+                    System.out.println(actions.size());
+                    for (int i = 0; i < actions.size(); i++) {
+                        int finalI=i;
+                        Thread aThread =new Thread(()->{
                             gameController.doAction(actions.get(finalI));
                             try {
                                 Thread.sleep(500);
                             } catch (InterruptedException ex) {
                                 ex.printStackTrace();
                             }
-                    });
-                    aThread.run();
-                }
+                        });
+                        aThread.run();
+                    }
 //                for (int i = 0; i <actions.size() ; i++) {
 //                    gameController.doAction(actions.get(i));
 //                }
-            }
-    }});}
-    protected void addBackground(int turn,PlayerColor color){
+                }
+            }});}
+    protected void addBackground(){
         Image img = new ImageIcon("resource/gameBg2.png").getImage();
         img=img.getScaledInstance(WIDTH,HEIGTH,Image.SCALE_DEFAULT);
         ImageIcon imageIcon=new ImageIcon(img);
@@ -194,7 +194,7 @@ public class ChessGameFrame extends JFrame {
         button.addActionListener(e -> {
             System.out.println("Click regret");
             if (chessboardComponent.getGameController().getActions().size()>0){
-            chessboardComponent.getGameController().regretAction(chessboardComponent.getGameController().getActions().get(chessboardComponent.getGameController().getActions().size() - 1));}
+                chessboardComponent.getGameController().regretAction(chessboardComponent.getGameController().getActions().get(chessboardComponent.getGameController().getActions().size() - 1));}
             else {
                 JOptionPane.showMessageDialog(null,"错误","没有前一步",JOptionPane.ERROR_MESSAGE);
             }
@@ -218,6 +218,24 @@ public class ChessGameFrame extends JFrame {
                 convertFile(this,path);
             } catch (IOException ex) {
                 throw new RuntimeException(ex);
+            }
+        });
+    }
+    private void addPlaybackButton() {
+        JButton button = new JButton("Playback");
+        button.setLocation(HEIGTH, HEIGTH / 10 +120);
+        button.setSize(200, 60);
+        button.setFont(new Font("Rockwell", Font.BOLD, 20));
+        add(button);
+
+        button.addActionListener(e -> {
+            System.out.println("Click Playback");
+            List<Action>actions= chessboardComponent.getGameController().getActions();
+            ChessGameFrame mainFrame = new ChessGameFrame(1100, 810,1, PlayerColor.BLUE);
+            GameController gameController = new GameController(mainFrame.getChessboardComponent(), new Chessboard(),1,PlayerColor.BLUE);
+            mainFrame.setVisible(true);
+            for (int i = 0; i < actions.size(); i++) {
+                gameController.doAction(actions.get(i));
             }
         });
     }
@@ -287,10 +305,6 @@ public class ChessGameFrame extends JFrame {
         return true;
     }
     public List<Action> convertToAction(List<String> lines){
-//        ObjectInputStream ois=null;
-//        try {
-//            ois=new ObjectInputStream(lines.get(0));
-//        }
         List<Action>actions=new ArrayList<>();
         if (lines.size()-11>0){
             String[][]strings=new String[lines.size()-11][];
@@ -307,9 +321,9 @@ public class ChessGameFrame extends JFrame {
                     actions.add(new Action(from,dest,piece1,piece2));
                 }else actions.add(new Action(from,dest,piece1,null));
             }
-        return actions;}else return null;
+            return actions;}else return null;
     }
-    private ChessPiece produceChess(String str,String str2){
+    public ChessPiece produceChess(String str,String str2){
         if (str.equals("BLUE")){
             ChessPiece chessPiece=new ChessPiece(PlayerColor.BLUE,str2);
             return chessPiece;
